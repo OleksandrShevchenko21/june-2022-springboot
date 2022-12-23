@@ -16,6 +16,11 @@ public class CustomerService {
     private CustomerDAO customerDAO;
     private MailService mailService;
 
+    public void save(Customer customer) {
+//        customer.setActivationToken(new ActivationToken());
+        customerDAO.save(customer);
+        mailService.send(customer);
+    }
 
     public ResponseEntity<List<Customer>> customerListByName(String name) {
         if (name != null && !name.isBlank()) {

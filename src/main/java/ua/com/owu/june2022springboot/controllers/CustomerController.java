@@ -7,14 +7,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ua.com.owu.june2022springboot.dao.CustomerDAO;
 import ua.com.owu.june2022springboot.models.Customer;
-import ua.com.owu.june2022springboot.models.CustomerDTO;
+import ua.com.owu.june2022springboot.models.dto.CustomerDTO;
 import ua.com.owu.june2022springboot.services.CustomerService;
 
-import javax.naming.Name;
 import java.util.List;
-@AllArgsConstructor
 @RestController
 @RequestMapping("/customers")
+@AllArgsConstructor
 public class CustomerController {
 
     private CustomerDAO customerDAO;
@@ -33,7 +32,8 @@ public class CustomerController {
     @PostMapping("")
     @ResponseStatus(HttpStatus.CREATED)
     public void saveCustomer(@RequestBody Customer customer){
-        customerDAO.save(customer);
+//        customerDAO.save(customer);
+        customerService.save(customer);
 
     }
 
