@@ -59,7 +59,7 @@ public class MailService {
         try {
             helper.setTo(customer.getEmail());
 //            helper.setText("<a href='http://localhost:8080/customers/activate/"+customer.getActivationToken().getToken()+"'>click to activate</a>", true);
-            helper.setText("tedgdgghkghkd");
+            helper.setText("<a href='http://localhost:8080/customers/activate/"+customer.getId()+"'>click to activate</a>",true);
             helper.setFrom(new InternetAddress("shevchenko2106@gmail.com"));
         } catch (MessagingException e) {
             throw new RuntimeException(e);

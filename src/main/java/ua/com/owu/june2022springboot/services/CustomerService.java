@@ -42,4 +42,10 @@ public class CustomerService {
         }
 
     }
+    public Customer getCustomerById(int id){
+        return customerDAO.findById(id).get();
+    }
+    public void updateCustomer(Customer customer){
+        customerDAO.save(customer);
+    }
 }
