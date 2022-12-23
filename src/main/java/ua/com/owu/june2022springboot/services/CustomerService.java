@@ -14,6 +14,8 @@ import java.util.List;
 public class CustomerService {
 
     private CustomerDAO customerDAO;
+    private MailService mailService;
+
 
     public ResponseEntity<List<Customer>> customerListByName(String name) {
         if (name != null && !name.isBlank()) {

@@ -19,6 +19,7 @@ public class Customer {
     private int id;
     private String name;
     private String surname;
+    private boolean isActivated =false;
     private String email;
 
     public Customer(String name, String surname, String email) {
