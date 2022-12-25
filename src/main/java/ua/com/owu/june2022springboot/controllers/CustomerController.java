@@ -1,5 +1,6 @@
 package ua.com.owu.june2022springboot.controllers;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -9,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import ua.com.owu.june2022springboot.dao.CustomerDAO;
 import ua.com.owu.june2022springboot.models.Customer;
 import ua.com.owu.june2022springboot.models.dto.CustomerDTO;
+import ua.com.owu.june2022springboot.models.views.Views;
 import ua.com.owu.june2022springboot.services.CustomerService;
 
 import java.io.File;
@@ -24,6 +26,7 @@ public class CustomerController {
 
     //------------------Get All Customers------------------
     @GetMapping("")
+    @JsonView({Views.Client.class})
     public ResponseEntity<List<Customer>>getCustomers(){
         List<Customer> all = customerDAO.findAll();
 
@@ -51,6 +54,7 @@ public class CustomerController {
 
     //------------------Get Customer By id------------------
     @GetMapping("/{id}")
+    @JsonView({Views.Admin.class})
     public  ResponseEntity<Customer> getOneCustomer(@PathVariable int id){
         Customer customer = customerDAO.findById(id).get();
         return new ResponseEntity<>(customer,HttpStatusCode.valueOf(200));
