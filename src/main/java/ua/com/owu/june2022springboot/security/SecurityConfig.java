@@ -1,10 +1,13 @@
 package ua.com.owu.june2022springboot.security;
 
+import io.jsonwebtoken.Jwts;
 import lombok.AllArgsConstructor;
 import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -12,6 +15,7 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -25,12 +29,18 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import ua.com.owu.june2022springboot.dao.CustomerDAO;
 import ua.com.owu.june2022springboot.models.Customer;
 import ua.com.owu.june2022springboot.security.filters.CustomFilter;
+//import ua.com.owu.june2022springboot.security.filters.CustomFilter;
 
 
 import javax.servlet.Filter;
+import javax.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+
+import static org.springframework.http.HttpMethod.GET;
 
 @Configuration // нужен чтоб создавать Bean
 @EnableWebSecurity //внедряет дефолтные настройки чтоб SecurityConfig начинало обработку запросов
@@ -57,41 +67,21 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {      //Spring
         });
 
     }
-
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-
-        http.csrf().disable()
-                .authorizeRequests()
-                .antMatchers("GET", "/").permitAll()
-                .antMatchers(HttpMethod.POST, "/save").permitAll()
-                .antMatchers(HttpMethod.GET, "/secure").hasAnyRole("ADMIN", "USER")
-                .and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and().cors().configurationSource(configurationSource())
-                /* делаем кастомный фильтр. Фильтр может быть реализован с помощью функционального интерфейса
-                 * добавляем свой собственный фильтр Before до того как сработает UsernamePasswordAuthenticationFilter.class */
-                .and().addFilterBefore(
-//                        (servletRequest, servletResponse, filterChain) -> { //нарушили цепочку
-//
-//                            System.out.println("custom filter");
-//                            filterChain.doFilter(servletRequest,servletResponse); //воостановили цепочку
-//
-//
-//                },
-                customFilter(),
-                        UsernamePasswordAuthenticationFilter.class);
-    }
+@Bean
+public CustomFilter customFilter(){
+        return new CustomFilter(customerDAO);
+}
 /*собственный фильтр.показал как содавать собственные фильтры
 * в filters создаев customFilter класс */
-    public CustomFilter customFilter() {
-        return  new CustomFilter();
-    }
+//    public CustomFilter customFilter() {
+//        return  new CustomFilter();
+//    }
 
     /*генерируем с каких серверов/хостов еще разрешено обращаться,
      * какие http методы разрешены,
      * какие хедеры дополнительно надо показывать на стороне клиента */
     @Bean
-    public CorsConfigurationSource configurationSource() {
+    public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:4200"));   // обычно вместо локал хоста URL возможно с каким-то портом
@@ -110,6 +100,32 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {      //Spring
         source.registerCorsConfiguration("/**", configuration); // на любые url мы эту кофигурацию применяем
 
         return source;
+    }
+
+    @Override
+    @Bean
+    /*позволяет тот существующий объект положить в Bean контейнер и потом его можно будет вызвать в MainController-e*/
+    protected AuthenticationManager authenticationManager() throws Exception {
+        return super.authenticationManager();
+    }
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+
+        http.csrf().disable()
+                .authorizeRequests()
+                .antMatchers(HttpMethod.GET, "/").permitAll()
+                .antMatchers(HttpMethod.POST, "/save").permitAll()
+                .antMatchers(HttpMethod.POST, "/login").permitAll()
+                .antMatchers(HttpMethod.GET, "/secure").hasAnyRole("ADMIN", "USER")
+                .and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .and().cors().configurationSource(corsConfigurationSource())
+                /* делаем кастомный фильтр. Фильтр может быть реализован с помощью функционального интерфейса
+                 * добавляем свой собственный фильтр Before до того как сработает UsernamePasswordAuthenticationFilter.class */
+                .and().addFilterBefore(
+
+                        customFilter(),
+                        UsernamePasswordAuthenticationFilter.class);
     }
 
 }

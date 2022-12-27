@@ -20,5 +20,5 @@ public class Customer {
 
     private String password;
 
-    private String role = "ROLE_USER ";
+    private String role = "ROLE_USER";
 }
