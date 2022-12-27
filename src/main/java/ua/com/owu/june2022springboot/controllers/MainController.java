@@ -21,6 +21,8 @@ import ua.com.owu.june2022springboot.models.dto.CustomerDTO;
 import java.lang.annotation.Retention;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLOutput;
+import java.time.LocalDateTime;
+import java.util.Date;
 
 @RestController
 @AllArgsConstructor
@@ -49,6 +51,7 @@ public class MainController {
             /*формируем токен*/
             String jwtToken = Jwts.builder()
                     .setSubject(authenticate.getName())
+                    .setExpiration(new Date())
                     .signWith(SignatureAlgorithm.HS512, "okten".getBytes(StandardCharsets.UTF_8))
                     .compact();
             System.out.println(jwtToken);
