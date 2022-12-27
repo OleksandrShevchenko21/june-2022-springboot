@@ -2,6 +2,7 @@ package ua.com.owu.june2022springboot.controllers;
 
 
 import lombok.AllArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,6 +20,7 @@ import java.util.List;
 public class MainController {
 
     private CustomerDAO customerDAO;
+    public PasswordEncoder passwordEncoder; //отсюда достается созданный @Bean
 
     @GetMapping("/")
     public String open(){
@@ -26,6 +28,9 @@ public class MainController {
     }
     @PostMapping("/save")
     public void save(@RequestBody Customer customer){
+        String password = customer.getPassword(); // берем с customer пароль для зашифровки с помощью PasswordEncoder
+        String encode = passwordEncoder.encode(password); //бередаем стрингу и он ее кодирует
+        customer.setPassword(encode);
         customerDAO.save(customer);
     }
     /*будет работать если сохраним в базу данных соответсвующий объект и у него будет соответсвующая роль*/
