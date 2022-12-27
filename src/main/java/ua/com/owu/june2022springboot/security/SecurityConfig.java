@@ -18,9 +18,16 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import ua.com.owu.june2022springboot.dao.CustomerDAO;
 import ua.com.owu.june2022springboot.models.Customer;
+import ua.com.owu.june2022springboot.security.filters.CustomFilter;
 
+
+import javax.servlet.Filter;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -31,59 +38,78 @@ import java.util.List;
 public class SecurityConfig extends WebSecurityConfigurerAdapter {      //Spring 2.6.7
 
     private CustomerDAO customerDAO;
-
-
-    /*создаем дополнительный объект, чтоб сопоставить зашифрованный пароль с расшифрованным*/
-    @Bean //, аннотация, которая позволяет с того, что возвращается с нашего метода сделать объект и положиьт его в Bean Conteiner
-    public PasswordEncoder passwordEncoder(){
+    @Bean
+    PasswordEncoder passwordEncoder(){
         return new BCryptPasswordEncoder();
     }
 
+    /* конфигурация через AuthenticationManager*/
+
     @Override
-    /*ctrl-o. Будем получать частичку объекта и аутентифицировать его. Т.е принять login, password  и найти объект в базе данных*/
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        // это интерфейс
-        auth.userDetailsService(username -> { //username - это всегда логин
-//            System.out.println(username);
-            Customer customer = customerDAO.findCustomerByLogin(username);//создаем метод findCustomerByLogin с помощью JPA и ищем по логину свой объект
-
-          /*  List<SimpleGrantedAuthority> roles = Arrays.asList(new SimpleGrantedAuthority(customer.getRole())); //обвертка для стринговых репрезентаций ролей
-            //создали обвертку и в нее положили логин, пароль и список ролей
-            User user = new User(
-                    customer.getLogin(),
-                    customer.getPassword(),
-                    roles   //коллекция объектов GrantedAuthority  */
-
-            /* берет этот объект и идет в базу данных.В базе данных находит
-            объект с нашим именем. Проверит его логин, пароль и его роли
-            сопоставит с частью .antMatchers(HttpMethod.GET,"/secure").hasAnyRole("ADMIN","CLIENT"),
-            чтоб можно было перейти на ту или другую URL, определяется тем какой список ролей у тебя сейчас есть */
+        auth.userDetailsService(username -> {
+            System.out.println("login trig"); //проверить работает ли логин, потому что он по факту не выполняем, но он происходит
+            Customer customer = customerDAO.findCustomerByLogin(username);
             return new User(
                     customer.getLogin(),
                     customer.getPassword(),
-                    Arrays.asList(new SimpleGrantedAuthority(customer.getRole()))   //коллекция объектов GrantedAuthority
-            );
+                    Arrays.asList(new SimpleGrantedAuthority(customer.getRole())));
         });
 
     }
 
     @Override
-/*конфигурировать HTTP requests, т.е. из разрешения(access) и запреты(denied) */
     protected void configure(HttpSecurity http) throws Exception {
-        http
-                .csrf().disable()   // это подход MVC Model View Controller он устаревший. Мы сним не работаем. Все работают с API потому что потом их можно импортировать на мобильные приложения
-                .cors().disable()  //
-                .authorizeRequests() //начинается процесс авторизации. Он включает:
-                .antMatchers(HttpMethod.GET,"/","/open").permitAll() //обрабатываем URL методом GET, которая будет выглядеть как "/"("/open" - дополнительная). И она доступна всем
-                .antMatchers(HttpMethod.POST,"/save").permitAll()
-                .antMatchers(HttpMethod.GET,"/secure").hasAnyRole("ADMIN","CLIENT")// доступна тем у кого есть ROLE
-//                .antMatchers("/img/**").permitAll() //иначе image не будут отображаться, потому что img и его src это запрос
-//                .antMatchers("/**.css").permitAll() //
-                .and() //для чейнинг, чтоб не разрывать ничего
-                .httpBasic()//включить базвое http аутентификацию позволяет конвертировать объект, который приходит из "/secure" в объект типа HttpSecurity. Принцип кодирование через формат b64
-                .and()
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);//система будет без сессий .Сессии для REST API это плохо
 
-
+        http.csrf().disable()
+                .authorizeRequests()
+                .antMatchers("GET", "/").permitAll()
+                .antMatchers(HttpMethod.POST, "/save").permitAll()
+                .antMatchers(HttpMethod.GET, "/secure").hasAnyRole("ADMIN", "USER")
+                .and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .and().cors().configurationSource(configurationSource())
+                /* делаем кастомный фильтр. Фильтр может быть реализован с помощью функционального интерфейса
+                 * добавляем свой собственный фильтр Before до того как сработает UsernamePasswordAuthenticationFilter.class */
+                .and().addFilterBefore(
+//                        (servletRequest, servletResponse, filterChain) -> { //нарушили цепочку
+//
+//                            System.out.println("custom filter");
+//                            filterChain.doFilter(servletRequest,servletResponse); //воостановили цепочку
+//
+//
+//                },
+                customFilter(),
+                        UsernamePasswordAuthenticationFilter.class);
     }
+/*собственный фильтр.показал как содавать собственные фильтры
+* в filters создаев customFilter класс */
+    public CustomFilter customFilter() {
+        return  new CustomFilter();
+    }
+
+    /*генерируем с каких серверов/хостов еще разрешено обращаться,
+     * какие http методы разрешены,
+     * какие хедеры дополнительно надо показывать на стороне клиента */
+    @Bean
+    public CorsConfigurationSource configurationSource() {
+
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:4200"));   // обычно вместо локал хоста URL возможно с каким-то портом
+        configuration.setAllowedHeaders(Arrays.asList("*")); //говорим, что все хедеры разрешено отправлять нам, а сервер будет их принимать. Хедер -метаинформация где например могут храниться логин и пароль, параметры поиска
+//        configuration.addAllowedHeader("*"); //для одного хедера
+        configuration.setAllowedMethods(Arrays.asList( //можем запретить запрос методом GET, POST и т.д . Сейчас прописываем, которые хотим прямо запретить
+                HttpMethod.GET.name(),    //метод name, чтоб превратить название httpMethod енумовскую на стрингу
+                HttpMethod.POST.name(),
+                HttpMethod.PUT.name(),
+                HttpMethod.PATCH.name(),
+                HttpMethod.DELETE.name(),
+                HttpMethod.HEAD.name()
+        ));
+        configuration.addExposedHeader("Authorization"); //  хедеры, которые надо представить, потому что их не видно
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource(); //привязываем конфигурации к определенной URL
+        source.registerCorsConfiguration("/**", configuration); // на любые url мы эту кофигурацию применяем
+
+        return source;
+    }
+
 }
